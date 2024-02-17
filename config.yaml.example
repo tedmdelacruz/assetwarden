@@ -1,0 +1,17 @@
+timeout: 10
+save_path: /path/to/monitored_files/
+discord_webhook_url: https://discord.com/api/webhooks/xxxxx/
+enable_multithreading: true
+
+targets:
+  - name: "Example Website main JS file"
+    enabled: true
+    identifier: "example_website"
+    webpage: "https://example.com/home/"
+    selector: 'script[src^="https://cdn.example.com/main."][src$=".js"]'
+
+  - name: "Another Example Website app JS file"
+    enabled: true
+    identifier: "another_example_website"
+    webpage: "https://anotherexample.com/home/"
+    selector: 'script[src^="https://cdn.anotherexample.com/app."][src$=".js"]'
