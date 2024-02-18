@@ -4,8 +4,8 @@ import shutil
 import os
 import yaml
 import threading
+import requests
 from discord_notify import Notifier
-
 from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException
@@ -14,7 +14,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
-from urllib.request import urlretrieve
 
 
 DEFAULT_TIMEOUT_SECONDS = 10
@@ -25,9 +24,16 @@ config = yaml.safe_load(config_file)
 config_file.close()
 
 
-def notify_discord(message):
+def download_file(url, download_filepath):
+    response = requests.get(url)
+    with open(download_filepath, 'wb') as f:
+        f.write(response.content)
+
+
+def notify(message):
     notifier = Notifier(config["discord_webhook_url"])
     notifier.send(message, print_message=False)
+
 
 def get_config(key, default):
     try:
@@ -36,9 +42,11 @@ def get_config(key, default):
         return default
 
 
-def fetch_resource_url(url, selector, timeout=DEFAULT_TIMEOUT_SECONDS):
+def fetch_resource_url(
+    url, selector, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
+):
     try:
-        print(f"Fetching {selector} from {url} ...")
+        print(f"Fetching resource from {url} ...")
 
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
@@ -51,7 +59,7 @@ def fetch_resource_url(url, selector, timeout=DEFAULT_TIMEOUT_SECONDS):
         return (
             WebDriverWait(browser, timeout, ignored_exceptions=ignored_exceptions)
             .until(ec.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            .get_attribute("src")
+            .get_attribute(url_attribute)
         )
     except (TimeoutException, StaleElementReferenceException):
         print("Timed out. Retrying...")
@@ -78,7 +86,7 @@ def make_diff(entry_name, identifier, js_url, save_path=None):
     datetime_now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
     diff_filepath = os.path.join(diff_dir, f"{datetime_now}.diff")
 
-    urlretrieve(js_url, raw_js_filepath)
+    download_file(js_url, raw_js_filepath)
     print(f"Downloaded {js_url}")
 
     try:
@@ -103,21 +111,23 @@ def make_diff(entry_name, identifier, js_url, save_path=None):
             for line in diff:
                 diff_file.write(line)
 
-            notify_discord(
+            notify(
                 f"> Detected file changes in {entry_name} at \n"
                 f"```{diff_filepath}```"
             )
 
     shutil.copyfile(new_js_filepath, old_js_filepath)
 
+
 def detect_changes(entry):
     if not entry["enabled"]:
-        return 
+        return
 
+    url_attribute = entry["url_attribute"] if "url_attribute" in entry else "src"
     resource_url = None
     while not resource_url:
         resource_url = fetch_resource_url(
-            entry["webpage"], entry["selector"], config["timeout"]
+            entry["webpage"], entry["selector"], url_attribute, config["timeout"]
         )
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
