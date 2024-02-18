@@ -7,11 +7,16 @@ from datetime import datetime
 import jsbeautifier
 import requests
 import yaml
+from urllib.parse import urljoin
+from bs4 import BeautifulSoup
 from discord_notify import Notifier
 from selenium import webdriver
-from selenium.common.exceptions import (NoSuchElementException,
-                                        StaleElementReferenceException,
-                                        TimeoutException, WebDriverException)
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+    WebDriverException,
+)
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -48,20 +53,39 @@ def get_config(key, default=None):
         return default
 
 
+def get_optional_config(key, config, default=None):
+    return config[key] if key in config else default
+
+
 def log(message):
     if get_config("verbose", True):
         print(message)
 
-def fetch_resource_url(
-    url, selector, asset_base_path, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
-):
-    """Fetches a resource URL from a webpage element given a CSS selector. Useful for 
-    retrieving URLs from <script src="{resource_url}"></script> or <link href="{resource_url}/>.
-    Also works on dynamically loaded JS files.
-    """
-    try:
-        log(f"Fetching resource from {url}...")
 
+def fetch_resource_url(
+    url,
+    selector,
+    asset_base_path,
+    headers={},
+    url_attribute="src",
+    dynamic=False,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+):
+    """Fetches a resource URL from a webpage element given a CSS selector. Useful for
+    retrieving URLs from <script src="{resource_url}"></script> or <link href="{resource_url}/>.
+
+    Uses plain requests for static JS files, otherwise use Selenium for dynamic JS files.
+    """
+    log(f"Fetching resource from {url}...")
+
+    if not dynamic:
+        response = requests.get(url, headers=headers)
+        html = BeautifulSoup(response.content, "html.parser")
+        asset_url = html.select_one(selector).get(url_attribute)
+        if not asset_url.startswith("http"):
+            return urljoin(asset_base_path, asset_url)
+
+    try:
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--headless")
@@ -76,7 +100,7 @@ def fetch_resource_url(
             .get_attribute(url_attribute)
         )
         if not asset_url.startswith("http"):
-            return os.path.join(asset_base_path, asset_url)
+            return urljoin(asset_base_path, asset_url)
         return asset_url
 
     except (TimeoutException, StaleElementReferenceException, NoSuchElementException):
@@ -88,7 +112,7 @@ def fetch_resource_url(
 def make_diff(target_name, identifier, js_url, save_path=None):
     """Generates a diff of a newer version of a JS by comparing it against an
     older version saved in the save path
-    
+
     Creates a historical snapshot diff file at /path/to/save_path/YYYY-MM-DD_h_m_s.diff
     """
     if save_path:
@@ -147,12 +171,16 @@ def detect_changes(target):
     if not target["enabled"]:
         return
 
-    url_attribute = target["url_attribute"] if "url_attribute" in target else "src"
-    asset_base_path = target["asset_base_path"] if "asset_base_path" in target else None
     resource_url = None
     while not resource_url:
         resource_url = fetch_resource_url(
-            target["webpage"], target["selector"], asset_base_path, url_attribute, config["timeout"]
+            target["webpage"],
+            target["selector"],
+            headers=get_optional_config("headers", target),
+            asset_base_path=get_optional_config("asset_base_path", target),
+            url_attribute=get_optional_config("url_attribute", target, "src"),
+            dynamic=get_optional_config("dynamic", target, False),
+            timeout=config["timeout"],
         )
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
@@ -174,6 +202,7 @@ def main():
             detect_changes(target)
 
     log("Done.")
+
 
 if __name__ == "__main__":
     main()

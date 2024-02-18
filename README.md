@@ -19,6 +19,7 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 
 ## Features
 - Easily configurable via `config.yaml`
+- Fetch JS behind authenticated pages
 - Multithreading support
 - Discord notifications
 - Automatic diff generation
@@ -37,7 +38,6 @@ python assetwarden.py
 ```
 
 ## TODO
-- [ ] Allow setting of custom authentication headers and cookies
 - [ ] Add support for Slack notifications
 - [ ] Allow script flags and args by using [click](https://click.palletsprojects.com/en/8.1.x/)
 - [ ] Allow setting of config.yaml with a `--use-config` switch
