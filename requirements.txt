@@ -1,5 +1,6 @@
+bs4==0.0.2
 discord-notify==1.0.0
 jsbeautifier==1.15.1
-requests==2.31.0
 PyYAML==6.0.1
+requests==2.31.0
 selenium==4.17.2
