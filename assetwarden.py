@@ -1,23 +1,21 @@
-import jsbeautifier
 import difflib
-import shutil
 import os
-import yaml
+import shutil
 import threading
-import requests
-from discord_notify import Notifier
 from datetime import datetime
+
+import jsbeautifier
+import requests
+import yaml
+from discord_notify import Notifier
 from selenium import webdriver
-from selenium.common.exceptions import (
-    StaleElementReferenceException,
-    NoSuchElementException,
-)
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import (NoSuchElementException,
+                                        StaleElementReferenceException,
+                                        TimeoutException, WebDriverException)
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
-
 
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_SAVE_PATH = "./monitored_files"
