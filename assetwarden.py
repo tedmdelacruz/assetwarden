@@ -8,7 +8,10 @@ import requests
 from discord_notify import Notifier
 from datetime import datetime
 from selenium import webdriver
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    NoSuchElementException,
+)
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -26,7 +29,7 @@ config_file.close()
 
 def download_file(url, download_filepath):
     response = requests.get(url)
-    with open(download_filepath, 'wb') as f:
+    with open(download_filepath, "wb") as f:
         f.write(response.content)
 
 
@@ -46,7 +49,7 @@ def fetch_resource_url(
     url, selector, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
 ):
     try:
-        print(f"Fetching resource from {url} ...")
+        print(f"Fetching resource from {url}...")
 
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
@@ -61,7 +64,8 @@ def fetch_resource_url(
             .until(ec.presence_of_element_located((By.CSS_SELECTOR, selector)))
             .get_attribute(url_attribute)
         )
-    except (TimeoutException, StaleElementReferenceException):
+
+    except (TimeoutException, StaleElementReferenceException, NoSuchElementException):
         print("Timed out. Retrying...")
     except WebDriverException as e:
         print(e)
