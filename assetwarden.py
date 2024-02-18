@@ -135,6 +135,7 @@ def make_diff(target_name, identifier, js_url, save_path=None):
 
 def detect_changes(target):
     """Detects changes in a target JS file"""
+    import ipdb; ipdb.set_trace()
     if not target["enabled"]:
         return
 
@@ -148,12 +149,22 @@ def detect_changes(target):
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
     make_diff(target["name"], target["identifier"], resource_url, save_path=save_path)
 
+def group_targets(targets):
+    """Groups targets by webpage"""
+    grouped_targets = {}
+    for target in targets:
+        if not target["webpage"] in grouped_targets.keys():
+            grouped_targets[target["webpage"]] = []
+        grouped_targets[target["webpage"]].append(target)
+        yield grouped_targets
+
 
 def main():
 
     if get_config("enable_multithreading", True):
         threads = []
-        for target in config["targets"]:
+        for target in group_targets(config["targets"]):
+            import ipdb; ipdb.set_trace()
             thread = threading.Thread(target=detect_changes, args=(target,))
             thread.start()
             threads.append(thread)
