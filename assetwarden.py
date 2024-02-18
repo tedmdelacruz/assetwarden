@@ -146,22 +146,25 @@ def make_diff(target_name, identifier, js_url, save_path=None):
         shutil.copyfile(new_js_filepath, old_js_filepath)
         return
 
-    with open(diff_filepath, "w") as diff_file:
-        diff = list(
-            difflib.unified_diff(
-                open(old_js_filepath, "r").readlines(),
-                open(new_js_filepath, "r").readlines(),
-            )
+    diff = list(
+        difflib.unified_diff(
+            open(old_js_filepath, "r").readlines(),
+            open(new_js_filepath, "r").readlines(),
         )
+    )
 
-        if len(diff) > 0:
-            for line in diff:
-                diff_file.write(line)
+    if len(diff) == 0:
+        shutil.copyfile(new_js_filepath, old_js_filepath)
+        return
 
-            notify(
-                f"> Detected file changes in {target_name} at \n"
-                f"```{diff_filepath}```"
-            )
+    with open(diff_filepath, "w") as diff_file:
+        for line in diff:
+            diff_file.write(line)
+
+        notify(
+            f"> Detected file changes in {target_name} at \n"
+            f"```{diff_filepath}```"
+        )
 
     shutil.copyfile(new_js_filepath, old_js_filepath)
 
