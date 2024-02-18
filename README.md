@@ -8,9 +8,14 @@
 
 # assetwarden
 
-Monitoring webpage assets, particularly JavaScript files, is highly useful in cybersecurity research. This enables security researchers to quickly find new API endpoints, exposed secrets, and even website features not yet available to the public.
+Monitoring webpage assets, particularly JavaScript files, is highly useful in cybersecurity research. This enables security researchers to quickly find new API endpoints, exposed secrets, and even website features that are not yet available to the public.
 
-`assetwarden` is a simple utility script that monitors JavaScript files of a website for changes.
+However, there are many challenges in monitoring webpage assets. Some of which are:
+- Dynamically loaded JS files that are not immediately loaded in the DOM tree
+- Unpredictable JS filenames that contain hashes (ex. "app.94d7d0ecf48110ba.js")
+- JS assets are sometimes loaded behind authentication
+
+`assetwarden` is a simple asset monitoring framework that tackles these issues.
 
 ## Features
 - Easily configurable
@@ -30,3 +35,7 @@ Run the following:
 ```sh
 python assetwarden.py
 ```
+
+## TODO
+- [ ] Allow setting of custom authentication headers and cookies
+- [ ] Add support for Slack notifications
