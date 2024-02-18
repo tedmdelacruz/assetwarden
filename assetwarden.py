@@ -26,17 +26,21 @@ config_file.close()
 
 
 def download_file(url, download_filepath):
+    """Downloads a resource from a URL into the local file system. Opted for requests
+    instead of urllib library due to its better handling of encodings"""
     response = requests.get(url)
     with open(download_filepath, "wb") as f:
         f.write(response.content)
 
 
 def notify(message):
+    """Sends a notification via Discord"""
     notifier = Notifier(config["discord_webhook_url"])
     notifier.send(message, print_message=False)
 
 
 def get_config(key, default):
+    """Fetches a config item from ./config.yaml"""
     try:
         return config[key]
     except KeyError:
@@ -46,6 +50,9 @@ def get_config(key, default):
 def fetch_resource_url(
     url, selector, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
 ):
+    """Fetches a resource URL from a webpage element given a CSS selector. Useful for 
+    retrieving URLs from <script src="{resource_url}"></script> or <link href="{resource_url}/>
+    """
     try:
         print(f"Fetching resource from {url}...")
 
@@ -69,7 +76,12 @@ def fetch_resource_url(
         print(e)
 
 
-def make_diff(entry_name, identifier, js_url, save_path=None):
+def make_diff(target_name, identifier, js_url, save_path=None):
+    """Generates a diff of a newer version of a JS by comparing it against an
+    older version saved in the save path
+    
+    Creates a historical snapshot diff file at /path/to/save_path/YYYY-MM-DD_h_m_s.diff
+    """
     if save_path:
         base_path = os.path.realpath(save_path)
     else:
@@ -114,39 +126,40 @@ def make_diff(entry_name, identifier, js_url, save_path=None):
                 diff_file.write(line)
 
             notify(
-                f"> Detected file changes in {entry_name} at \n"
+                f"> Detected file changes in {target_name} at \n"
                 f"```{diff_filepath}```"
             )
 
     shutil.copyfile(new_js_filepath, old_js_filepath)
 
 
-def detect_changes(entry):
-    if not entry["enabled"]:
+def detect_changes(target):
+    """Detects changes in a target JS file"""
+    if not target["enabled"]:
         return
 
-    url_attribute = entry["url_attribute"] if "url_attribute" in entry else "src"
+    url_attribute = target["url_attribute"] if "url_attribute" in target else "src"
     resource_url = None
     while not resource_url:
         resource_url = fetch_resource_url(
-            entry["webpage"], entry["selector"], url_attribute, config["timeout"]
+            target["webpage"], target["selector"], url_attribute, config["timeout"]
         )
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
-    make_diff(entry["name"], entry["identifier"], resource_url, save_path=save_path)
+    make_diff(target["name"], target["identifier"], resource_url, save_path=save_path)
 
 
 def main():
 
     if get_config("enable_multithreading", True):
         threads = []
-        for entry in config["targets"]:
-            thread = threading.Thread(target=detect_changes, args=(entry,))
+        for target in config["targets"]:
+            thread = threading.Thread(target=detect_changes, args=(target,))
             thread.start()
             threads.append(thread)
     else:
-        for entry in config["targets"]:
-            detect_changes(entry)
+        for target in config["targets"]:
+            detect_changes(target)
 
 
 if __name__ == "__main__":
