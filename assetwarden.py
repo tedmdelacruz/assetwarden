@@ -20,7 +20,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_SAVE_PATH = "./monitored_files"
 
-config_file = open("config.yaml", "r")
+script_base_path = os.path.dirname(os.path.realpath(__file__))
+config_file = open(os.path.join(script_base_path, "config.yaml"), "r")
 config = yaml.safe_load(config_file)
 config_file.close()
 
