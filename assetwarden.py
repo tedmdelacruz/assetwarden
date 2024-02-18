@@ -39,7 +39,7 @@ def notify(message):
     notifier.send(message, print_message=False)
 
 
-def get_config(key, default):
+def get_config(key, default=None):
     """Fetches a config item from ./config.yaml"""
     try:
         return config[key]
@@ -47,14 +47,19 @@ def get_config(key, default):
         return default
 
 
+def log(message):
+    if get_config("verbose", True):
+        print(message)
+
 def fetch_resource_url(
-    url, selector, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
+    url, selector, asset_base_path, url_attribute="src", timeout=DEFAULT_TIMEOUT_SECONDS
 ):
     """Fetches a resource URL from a webpage element given a CSS selector. Useful for 
-    retrieving URLs from <script src="{resource_url}"></script> or <link href="{resource_url}/>
+    retrieving URLs from <script src="{resource_url}"></script> or <link href="{resource_url}/>.
+    Also works on dynamically loaded JS files.
     """
     try:
-        print(f"Fetching resource from {url}...")
+        log(f"Fetching resource from {url}...")
 
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
@@ -64,16 +69,19 @@ def fetch_resource_url(
         browser = webdriver.Chrome(options=chrome_options)
         browser.get(url)
 
-        return (
+        asset_url = (
             WebDriverWait(browser, timeout, ignored_exceptions=ignored_exceptions)
             .until(ec.presence_of_element_located((By.CSS_SELECTOR, selector)))
             .get_attribute(url_attribute)
         )
+        if not asset_url.startswith("http"):
+            return os.path.join(asset_base_path, asset_url)
+        return asset_url
 
     except (TimeoutException, StaleElementReferenceException, NoSuchElementException):
-        print("Timed out. Retrying...")
+        log("Timed out. Retrying...")
     except WebDriverException as e:
-        print(e)
+        log(e)
 
 
 def make_diff(target_name, identifier, js_url, save_path=None):
@@ -101,13 +109,13 @@ def make_diff(target_name, identifier, js_url, save_path=None):
     diff_filepath = os.path.join(diff_dir, f"{datetime_now}.diff")
 
     download_file(js_url, raw_js_filepath)
-    print(f"Downloaded {js_url}")
+    log(f"Downloaded {js_url}")
 
     try:
         with open(new_js_filepath, "w") as f:
             f.write(jsbeautifier.beautify_file(raw_js_filepath))
     except UnicodeDecodeError:
-        print(f"Failed to decode JS file: {js_url}")
+        log(f"Failed to decode JS file: {js_url}")
 
     if not os.path.isfile(old_js_filepath):
         shutil.copyfile(new_js_filepath, old_js_filepath)
@@ -139,10 +147,11 @@ def detect_changes(target):
         return
 
     url_attribute = target["url_attribute"] if "url_attribute" in target else "src"
+    asset_base_path = target["asset_base_path"] if "asset_base_path" in target else None
     resource_url = None
     while not resource_url:
         resource_url = fetch_resource_url(
-            target["webpage"], target["selector"], url_attribute, config["timeout"]
+            target["webpage"], target["selector"], asset_base_path, url_attribute, config["timeout"]
         )
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
@@ -157,10 +166,13 @@ def main():
             thread = threading.Thread(target=detect_changes, args=(target,))
             thread.start()
             threads.append(thread)
+        for thread in threads:
+            thread.join()
     else:
         for target in config["targets"]:
             detect_changes(target)
 
+    log("Done.")
 
 if __name__ == "__main__":
     main()
