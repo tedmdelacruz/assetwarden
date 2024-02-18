@@ -41,3 +41,4 @@ python assetwarden.py
 - [ ] Add support for Slack notifications
 - [ ] Allow script flags and args by using [click](https://click.palletsprojects.com/en/8.1.x/)
 - [ ] Allow setting of config.yaml with a `--use-config` switch
+- [ ] Automatically use source maps, if detected
