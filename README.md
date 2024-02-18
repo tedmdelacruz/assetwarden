@@ -27,7 +27,7 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 
 ### Configure the script
 - `save_path` - Directory of monitored files and the generated diffs
-- `enable_multithreading` - Enable or disable multithreading
+- `enable_multithreading` - Toggle multithreading
 - `discord_webhook_url` - [Discord webhook URL](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)
 
 Run the following:
@@ -39,3 +39,5 @@ python assetwarden.py
 ## TODO
 - [ ] Allow setting of custom authentication headers and cookies
 - [ ] Add support for Slack notifications
+- [ ] Allow script flags and args by using [click](https://click.palletsprojects.com/en/8.1.x/)
+- [ ] Allow setting of config.yaml with a `--use-config` switch
