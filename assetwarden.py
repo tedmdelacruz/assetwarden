@@ -33,8 +33,10 @@ config_file.close()
 
 def download_file(url, download_filepath):
     """Downloads a resource from a URL into the local file system. Opted for requests
-    instead of urllib library due to its better handling of encodings"""
-    response = requests.get(url)
+    instead of urllib library due to its better handling of encodings.
+    Removes query parameters to mitigate caching issues.
+    """
+    response = requests.get(url.split("?")[0])
     with open(download_filepath, "wb") as f:
         f.write(response.content)
 
