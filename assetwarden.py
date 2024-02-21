@@ -140,7 +140,7 @@ def get_new_endpoints(js_filepath, known_endpoints_filepath):
             f.writelines(
                 [endpoint + "\n" for endpoint in sorted(detected_endpoints) if endpoint]
             )
-        return
+        return set()
 
     with open(known_endpoints_filepath, "r") as f:
         known_endpoints = set(filter(None, f.read().split("\n")))
