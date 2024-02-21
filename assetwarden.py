@@ -1,23 +1,21 @@
-import click
 import difflib
 import os
+import re
 import shutil
 import threading
 from datetime import datetime
+from urllib.parse import urljoin
 
+import click
 import jsbeautifier
 import requests
 import yaml
-from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from discord_notify import Notifier
 from selenium import webdriver
-from selenium.common.exceptions import (
-    NoSuchElementException,
-    StaleElementReferenceException,
-    TimeoutException,
-    WebDriverException,
-)
+from selenium.common.exceptions import (NoSuchElementException,
+                                        StaleElementReferenceException,
+                                        TimeoutException, WebDriverException)
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -25,12 +23,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_SAVE_PATH = "./monitored_files"
+API_ENDPOINTS_REGEX = r"(?<=['\"`])\/[\w\/\.-]+(?=['\"`])"
 
 # The main configuration dictionary
 config = None
 
 # Config file to use
 config_filepath = "./config.yaml"
+
 
 def load_config_file():
     """Loads the defined config file if config is not defined yet"""
@@ -55,7 +55,7 @@ def get_config(key, default=None):
         return config[key]
     except KeyError:
         return default
-    
+
 
 def download_file(url, download_filepath):
     """Downloads a resource from a URL into the local file system. Opted for requests
@@ -129,9 +129,39 @@ def fetch_resource_url(
         log(e)
 
 
-def make_diff(target_name, identifier, js_url, save_path=None):
-    """Generates a diff of a newer version of a JS by comparing it against an
-    older version saved in the save path
+def get_new_endpoints(js_filepath, known_endpoints_filepath):
+    """Finds API endpoints in a JS filepath and adds them into known_endpoints.txt"""
+    pattern = re.compile(API_ENDPOINTS_REGEX)
+    with open(js_filepath, "r") as js_file:
+        detected_endpoints = set(pattern.findall(js_file.read()))
+
+    if not os.path.isfile(known_endpoints_filepath):
+        with open(known_endpoints_filepath, "w") as f:
+            f.writelines(
+                [endpoint + "\n" for endpoint in sorted(detected_endpoints) if endpoint]
+            )
+        return
+
+    with open(known_endpoints_filepath, "r") as f:
+        known_endpoints = set(filter(None, f.read().split("\n")))
+        new_endpoints = detected_endpoints.symmetric_difference(known_endpoints)
+
+    with open(known_endpoints_filepath, "w") as f:
+        f.writelines(
+            [
+                endpoint + "\n"
+                for endpoint in sorted(detected_endpoints | known_endpoints)
+                if endpoint
+            ]
+        )
+        f.close()
+
+    return new_endpoints
+
+
+def monitor_js(target_name, identifier, js_url, save_path=None):
+    """Monitors changes in a JS file by fetching known API endpoints and comparing
+    it against an older version saved in the save path.
 
     Creates a historical snapshot diff file at /path/to/save_path/YYYY-MM-DD_h_m_s.diff
     """
@@ -150,8 +180,10 @@ def make_diff(target_name, identifier, js_url, save_path=None):
     raw_js_filepath = os.path.join(diff_dir, "raw.js")
     new_js_filepath = os.path.join(diff_dir, "new.js")
     old_js_filepath = os.path.join(diff_dir, "old.js")
+    known_endpoints_filepath = os.path.join(diff_dir, "known_endpoints.txt")
     datetime_now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
     diff_filepath = os.path.join(diff_dir, f"{datetime_now}.diff")
+    endpoints_diff_filepath = os.path.join(diff_dir, f"{datetime_now}-endpoints.diff")
 
     download_file(js_url, raw_js_filepath)
     log(f"Downloaded {js_url}")
@@ -165,6 +197,15 @@ def make_diff(target_name, identifier, js_url, save_path=None):
     if not os.path.isfile(old_js_filepath):
         shutil.copyfile(new_js_filepath, old_js_filepath)
         return
+
+    new_endpoints = get_new_endpoints(new_js_filepath, known_endpoints_filepath)
+    if len(new_endpoints) > 0:
+        with open(endpoints_diff_filepath, "w") as f:
+            f.writelines(endpoint + "\n" for endpoint in new_endpoints)
+        notify(
+            f"> Detected {len(new_endpoints)} new endpoint(s) in {target_name} at {js_url}\n"
+            f"```{endpoints_diff_filepath}```"
+        )
 
     diff = list(
         difflib.unified_diff(
@@ -207,12 +248,14 @@ def detect_changes(target):
         )
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
-    make_diff(target["name"], target["identifier"], resource_url, save_path=save_path)
+    monitor_js(target["name"], target["identifier"], resource_url, save_path=save_path)
 
 
 @click.command
 @click.option(
-    "--use-config", default="./config.yaml", help="Path to custom config.yaml file to load"
+    "--use-config",
+    default="./config.yaml",
+    help="Path to custom config.yaml file to load",
 )
 def main(use_config):
     global config_filepath

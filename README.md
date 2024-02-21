@@ -20,6 +20,7 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 ## Features
 - Easily configurable via `config.yaml`
 - Fetch JS behind authenticated pages
+- Detection of new API endpoints
 - Multithreading support
 - Discord notifications
 - Automatic diff generation
