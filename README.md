@@ -26,7 +26,7 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 
 ## Usage
 
-### Configure the script
+### Configuring `config.yaml`
 - `save_path` - Directory of monitored files and the generated diffs
 - `enable_multithreading` - Toggle multithreading
 - `discord_webhook_url` - [Discord webhook URL](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)
