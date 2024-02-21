@@ -1,3 +1,4 @@
+import click
 import difflib
 import os
 import shutil
@@ -25,11 +26,36 @@ from selenium.webdriver.support.ui import WebDriverWait
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_SAVE_PATH = "./monitored_files"
 
-script_base_path = os.path.dirname(os.path.realpath(__file__))
-config_file = open(os.path.join(script_base_path, "config.yaml"), "r")
-config = yaml.safe_load(config_file)
-config_file.close()
+# The main configuration dictionary
+config = None
 
+# Config file to use
+config_filepath = "./config.yaml"
+
+def load_config_file():
+    """Loads the defined config file if config is not defined yet"""
+    global config
+    global config_filepath
+
+    # Do not load config file if config has already been set
+    if config:
+        return
+
+    script_base_path = os.path.dirname(os.path.realpath(__file__))
+    config_filepath = open(os.path.join(script_base_path, config_filepath), "r")
+    config = yaml.safe_load(config_filepath)
+    config_filepath.close()
+
+
+def get_config(key, default=None):
+    """Fetches a config item from the defined config.yaml file"""
+    load_config_file()
+
+    try:
+        return config[key]
+    except KeyError:
+        return default
+    
 
 def download_file(url, download_filepath):
     """Downloads a resource from a URL into the local file system. Opted for requests
@@ -45,14 +71,6 @@ def notify(message):
     """Sends a notification via Discord"""
     notifier = Notifier(config["discord_webhook_url"])
     notifier.send(message, print_message=False)
-
-
-def get_config(key, default=None):
-    """Fetches a config item from ./config.yaml"""
-    try:
-        return config[key]
-    except KeyError:
-        return default
 
 
 def get_optional_config(key, config, default=None):
@@ -192,18 +210,25 @@ def detect_changes(target):
     make_diff(target["name"], target["identifier"], resource_url, save_path=save_path)
 
 
-def main():
+@click.command
+@click.option(
+    "--use-config", default="./config.yaml", help="Path to custom config.yaml file to load"
+)
+def main(use_config):
+    global config_filepath
+    config_filepath = use_config
 
+    targets = get_config("targets", [])
     if get_config("enable_multithreading", True):
         threads = []
-        for target in config["targets"]:
+        for target in targets:
             thread = threading.Thread(target=detect_changes, args=(target,))
             thread.start()
             threads.append(thread)
         for thread in threads:
             thread.join()
     else:
-        for target in config["targets"]:
+        for target in targets:
             detect_changes(target)
 
     log("Done.")

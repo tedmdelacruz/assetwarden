@@ -1,4 +1,5 @@
 bs4==0.0.2
+click==8.1.7
 discord-notify==1.0.0
 jsbeautifier==1.15.1
 PyYAML==6.0.1

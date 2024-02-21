@@ -34,11 +34,10 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 Run the following:
 
 ```sh
-python assetwarden.py
+python assetwarden.py [--use-config path/to/config.yaml]
 ```
 
 ## TODO
+- [ ] Convert to a reusable Python library
 - [ ] Add support for Slack notifications
-- [ ] Allow script flags and args by using [click](https://click.palletsprojects.com/en/8.1.x/)
-- [ ] Allow setting of config.yaml with a `--use-config` switch
-- [ ] Automatically use source maps, if detected
+- [ ] Automatically use source maps if detected
