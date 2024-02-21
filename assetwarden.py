@@ -164,7 +164,7 @@ def make_diff(target_name, identifier, js_url, save_path=None):
             diff_file.write(line)
 
         notify(
-            f"> Detected file changes in {target_name} at \n"
+            f"> Detected file changes in {target_name} at {js_url}\n"
             f"```{diff_filepath}```"
         )
 
