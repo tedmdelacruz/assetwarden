@@ -31,10 +31,13 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 - `enable_multithreading` - Toggle multithreading
 - `discord_webhook_url` - [Discord webhook URL](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)
 
-Run the following:
-
 ```sh
-python assetwarden.py [--use-config path/to/config.yaml]
+$ python assetwarden.py --help
+Usage: assetwarden.py [OPTIONS]
+
+Options:
+  --use-config TEXT  Path to custom config.yaml file to load
+  --help             Show this message and exit.
 ```
 
 ## TODO
