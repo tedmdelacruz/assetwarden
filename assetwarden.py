@@ -22,8 +22,9 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
 DEFAULT_TIMEOUT_SECONDS = 10
-DEFAULT_SAVE_PATH = "./monitored_files"
 API_ENDPOINTS_REGEX = r"(?<=['\"`])\/[\w\/\.-]+(?=['\"`])"
+SCRIPT_BASE_PATH = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_SAVE_PATH = os.path.join(SCRIPT_BASE_PATH, "./monitored_assets")
 
 # The main configuration dictionary
 config = None
@@ -41,8 +42,7 @@ def load_config_file():
     if config:
         return
 
-    script_base_path = os.path.dirname(os.path.realpath(__file__))
-    config_filepath = open(os.path.join(script_base_path, config_filepath), "r")
+    config_filepath = open(os.path.join(SCRIPT_BASE_PATH, config_filepath), "r")
     config = yaml.safe_load(config_filepath)
     config_filepath.close()
 
