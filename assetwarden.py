@@ -143,7 +143,8 @@ def get_new_endpoints(js_filepath, known_endpoints_filepath):
         return set()
 
     with open(known_endpoints_filepath, "r") as f:
-        known_endpoints = set(filter(None, f.read().split("\n")))
+        contents = f.read()
+        known_endpoints = set(filter(None, contents.split("\n")))
         new_endpoints = detected_endpoints.symmetric_difference(known_endpoints)
 
     with open(known_endpoints_filepath, "w") as f:
