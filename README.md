@@ -24,6 +24,7 @@ However, there are many challenges in monitoring webpage assets. Some of which a
 - Multithreading support
 - Discord notifications
 - Automatic diff generation
+- Automatic source regeneration from sourcemaps using [sourcemapper](https://github.com/denandz/sourcemapper)
 
 ## Usage
 
@@ -44,4 +45,4 @@ Options:
 ## TODO
 - [ ] Convert to a reusable Python library
 - [ ] Add support for Slack notifications
-- [ ] Automatically use source maps if detected
+- [x] Automatically use source maps if detected

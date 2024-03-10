@@ -64,8 +64,8 @@ def get_config(key, default=None):
         return default
 
 
-def generate_source(url, source_basepath):
-    """Attempts to generate source from sourcemap from a resource URL"""
+def regenerate_source(url, source_basepath):
+    """Attempts to regenerate source from sourcemap in a resource URL using sourcemapper"""
     response = requests.get(url.split("?")[0])
     sourcemap_split = response.content.decode().split("//# sourceMappingURL=")
     if len(sourcemap_split) == 1:
@@ -226,7 +226,7 @@ def monitor_js(target_name, identifier, js_url, save_path=None):
     download_file(js_url, raw_js_filepath)
     log(f"Downloaded {js_url}")
 
-    generate_source(js_url, source_basepath)
+    regenerate_source(js_url, source_basepath)
 
     try:
         with open(new_js_filepath, "w") as f:
