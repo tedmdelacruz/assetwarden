@@ -26,6 +26,7 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
 DEFAULT_TIMEOUT_SECONDS = 10
+DEFAULT_RETRY_ATTEMPTS = 5
 API_ENDPOINTS_REGEX = r"(?<=['\"`])\/[\w\/\.-]+(?=['\"`])"
 SCRIPT_BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_SAVE_PATH = os.path.join(SCRIPT_BASE_PATH, "./monitored_assets")
@@ -61,32 +62,39 @@ def get_config(key, default=None):
         return default
 
 
-def download_file(url, download_filepath):
-    """Downloads a resource from a URL into the local file system. Opted for requests
-    instead of urllib library due to its better handling of encodings.
-    Removes query parameters to mitigate caching issues.
-
-    Processes a sourcemap if detected in the resource
-    """
+def generate_source(url, source_basepath):
+    """Attempts to generate source from sourcemap from a resource URL"""
     response = requests.get(url.split("?")[0])
-    with open(download_filepath, "wb") as f:
-        f.write(response.content)
     sourcemap_split = response.content.decode().split("//# sourceMappingURL=")
     if len(sourcemap_split) == 1:
         return
+
     sourcemap = sourcemap_split[1]
-    file_basepath = os.path.dirname(download_filepath)
     if not sourcemap:
         return
 
+    if not os.path.exists(source_basepath):
+        os.mkdir(source_basepath)
+
+    datetime_now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
     sourcemap_url = (
         sourcemap if sourcemap.startswith("http") else urljoin(url, sourcemap)
     )
-    source_dir = os.path.join(file_basepath, "source.new")
+    source_dir = os.path.join(source_basepath, datetime_now)
     subprocess.run(
         ["sourcemapper", "-output", source_dir, "-url", sourcemap_url],
         capture_output=True,
     )
+
+
+def download_file(url, download_filepath):
+    """Downloads a resource from a URL into the local file system. Opted for requests
+    instead of urllib library due to its better handling of encodings.
+    Removes query parameters to mitigate caching issues.
+    """
+    response = requests.get(url.split("?")[0])
+    with open(download_filepath, "wb") as f:
+        f.write(response.content)
 
 
 def notify(message):
@@ -123,7 +131,10 @@ def fetch_resource_url(
     if not dynamic:
         response = requests.get(url, headers=headers)
         html = BeautifulSoup(response.content, "html.parser")
-        asset_url = html.select_one(selector).get(url_attribute)
+        asset_element = html.select_one(selector)
+        if not asset_element:
+            return
+        asset_url = asset_element.get(url_attribute)
         if not asset_url.startswith("http"):
             return urljoin(asset_base_path, asset_url)
 
@@ -203,6 +214,7 @@ def monitor_js(target_name, identifier, js_url, save_path=None):
     raw_js_filepath = os.path.join(diff_dir, "raw.js")
     new_js_filepath = os.path.join(diff_dir, "new.js")
     old_js_filepath = os.path.join(diff_dir, "old.js")
+    source_basepath = os.path.join(diff_dir, "source")
     known_endpoints_filepath = os.path.join(diff_dir, "known_endpoints.txt")
     datetime_now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
     diff_filepath = os.path.join(diff_dir, f"{datetime_now}.diff")
@@ -210,6 +222,8 @@ def monitor_js(target_name, identifier, js_url, save_path=None):
 
     download_file(js_url, raw_js_filepath)
     log(f"Downloaded {js_url}")
+
+    generate_source(js_url, source_basepath)
 
     try:
         with open(new_js_filepath, "w") as f:
@@ -254,12 +268,13 @@ def monitor_js(target_name, identifier, js_url, save_path=None):
 
 
 def detect_changes(target):
-    """Detects changes in a target JS file"""
+    """Detects changes in an asset resource"""
     if not target["enabled"]:
         return
 
     resource_url = None
-    while not resource_url:
+    retry_attempt = 0
+    while not resource_url and retry_attempt <= DEFAULT_RETRY_ATTEMPTS:
         resource_url = fetch_resource_url(
             target["webpage"],
             target["selector"],
@@ -269,9 +284,15 @@ def detect_changes(target):
             dynamic=get_optional_config("dynamic", target, False),
             timeout=config["timeout"],
         )
+        retry_attempt += 1
+
+    target_name = target["name"]
+    if not resource_url:
+        notify(f"> Failed to fetch resource URL at {target_name}")
+        return
 
     save_path = get_config("save_path", DEFAULT_SAVE_PATH)
-    monitor_js(target["name"], target["identifier"], resource_url, save_path=save_path)
+    monitor_js(target_name, target["identifier"], resource_url, save_path=save_path)
 
 
 @click.command
