@@ -13,6 +13,7 @@ import requests
 import yaml
 from bs4 import BeautifulSoup
 from discord_notify import Notifier
+from pathlib import Path
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
@@ -29,7 +30,8 @@ DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_RETRY_ATTEMPTS = 5
 API_ENDPOINTS_REGEX = r"(?<=['\"`])\/[\w\/\.-]+(?=['\"`])"
 SCRIPT_BASE_PATH = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_SAVE_PATH = os.path.join(SCRIPT_BASE_PATH, "./monitored_assets")
+HOME_PATH = os.path.realpath(Path.home())
+DEFAULT_SAVE_PATH = os.path.realpath(os.path.join(HOME_PATH, "./monitored_assets"))
 
 # The main configuration dictionary
 config = None
