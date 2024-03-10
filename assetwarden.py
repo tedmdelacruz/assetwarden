@@ -2,9 +2,10 @@ import difflib
 import os
 import re
 import shutil
+import subprocess
 import threading
 from datetime import datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import click
 import jsbeautifier
@@ -13,9 +14,12 @@ import yaml
 from bs4 import BeautifulSoup
 from discord_notify import Notifier
 from selenium import webdriver
-from selenium.common.exceptions import (NoSuchElementException,
-                                        StaleElementReferenceException,
-                                        TimeoutException, WebDriverException)
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+    WebDriverException,
+)
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
@@ -61,10 +65,28 @@ def download_file(url, download_filepath):
     """Downloads a resource from a URL into the local file system. Opted for requests
     instead of urllib library due to its better handling of encodings.
     Removes query parameters to mitigate caching issues.
+
+    Processes a sourcemap if detected in the resource
     """
     response = requests.get(url.split("?")[0])
     with open(download_filepath, "wb") as f:
         f.write(response.content)
+    sourcemap_split = response.content.decode().split("//# sourceMappingURL=")
+    if len(sourcemap_split) == 1:
+        return
+    sourcemap = sourcemap_split[1]
+    file_basepath = os.path.dirname(download_filepath)
+    if not sourcemap:
+        return
+
+    sourcemap_url = (
+        sourcemap if sourcemap.startswith("http") else urljoin(url, sourcemap)
+    )
+    source_dir = os.path.join(file_basepath, "source.new")
+    subprocess.run(
+        ["sourcemapper", "-output", source_dir, "-url", sourcemap_url],
+        capture_output=True,
+    )
 
 
 def notify(message):
