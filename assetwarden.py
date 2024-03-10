@@ -80,6 +80,7 @@ def generate_source(url, source_basepath):
     sourcemap_url = (
         sourcemap if sourcemap.startswith("http") else urljoin(url, sourcemap)
     )
+    log(f"Attempting to regenerate source {url}...")
     source_dir = os.path.join(source_basepath, datetime_now)
     subprocess.run(
         ["sourcemapper", "-output", source_dir, "-url", sourcemap_url],
